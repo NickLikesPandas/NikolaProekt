@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('title');
             $table->string('src'); // file name
             $table->timestamps();
-    
+    //sdsadsadadadadsadsadsadasdsa
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
