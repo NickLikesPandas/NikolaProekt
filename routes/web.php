@@ -22,7 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('images');
     })->name('images');
 
-    //Route::resource('images', ImageController::class);
+    Route::resource('images', ImageController::class);
 });
 
 require __DIR__.'/settings.php';
