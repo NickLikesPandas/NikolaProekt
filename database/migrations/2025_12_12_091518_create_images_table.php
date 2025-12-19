@@ -13,14 +13,13 @@ return new class extends Migration
     {
         Schema::create('images', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Links to User
             $table->string('title');
-            $table->string('src'); // file name
+            $table->longText('src'); // Use longText for Base64 URLs if needed, or string for file paths
             $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
+
     /**
      * Reverse the migrations.
      */

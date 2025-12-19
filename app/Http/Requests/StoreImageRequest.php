@@ -11,7 +11,7 @@ class StoreImageRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return true; // Allow all authorized users to make this request
     }
 
     /**
@@ -20,9 +20,8 @@ class StoreImageRequest extends FormRequest
     public function rules(): array
     {
         return [
-           //'user_id' => 'required|exists:users,id',
-            'title' => 'required|string|max:255',
-            'src' => 'required|string',
+            'title' => 'required|string|max:255', // Validate the title
+            'src'   => 'required|file|mimes:jpeg,png,jpg,gif|max:2048', // Validate the uploaded file
         ];
     }
 }

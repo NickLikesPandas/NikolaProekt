@@ -1,86 +1,101 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreImageRequest;
-use App\Http\Requests\UpdateImageRequest;
 use App\Models\Image;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Http\Requests\StoreImageRequest;
 
 class ImageController extends Controller
 {
-    public function index()
-    {
-        // Filter images by the logged-in user, similar to your NoteController
-        $images = Image::where('user_id', auth()->id())->get();
-        return response()->json(['images' => $images]);
-    }
-
     public function store(StoreImageRequest $request)
     {
-        $data = $request->validated();
-
-        // 1. Process the image file (Base64)
-        $data = $this->saveImageFromBase64($data);
-
-        // 2. Create image associated with the authenticated user
-        Image::create(array_merge($data, ['user_id' => auth()->id()]));
-
-        // 3. Return success message AND the fresh list of images (matching your NoteController pattern)
-        return response()->json([
-            'message' => 'Image created successfully!',
-            'images' => Image::where('user_id', auth()->id())->get()
-        ], 201);
+        try {
+            // Save the file to the storage
+            $filePath = $request->file('file')->store('images', 'public');
+    
+            // Save the data to the database
+            $image = Image::create([
+                'id' => auth()->id(),
+                'title' => $request->title,
+                'file_name' => $request->file('file')->getClientOriginalName(),
+                'file_url' => "/storage/{$filePath}",
+            ]);
+    
+            return response()->json(['message' => 'Image uploaded successfully', 'image' => $image], 201);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to upload image', 'error' => $e->getMessage()], 500);
+        }
     }
 
-    public function update(UpdateImageRequest $request, $id)
+    // New function to return a list of images
+    public function index()
     {
-        $validated = $request->validated();
+        $images = Image::where('user_id', auth()->id()) // Fetch images for the logged-in user
+        ->select('id', 'title', 'file_name', 'file_url')
+        ->get();
 
-        $image = Image::findOrFail($id);
-
-        // Process image file if a new one was uploaded
-        $validated = $this->saveImageFromBase64($validated);
-
-        $image->update($validated);
-
-        return response()->json(['message' => 'Image updated successfully!']);
+        // Format the response
+    $formattedImages = $images->map(function ($image) {
+        return [
+            'id' => $image->id,
+            'title' => $image->title,
+            'fileName' => $image->file_name, // Use camelCase for consistency with frontend
+            'fileUrl' => $image->file_url,
+        ];
+    });
+        
+    return response()->json(['images' => $formattedImages], 200);
     }
 
     public function destroy($id)
     {
-        $image = Image::findOrFail($id);
-        
-        // Optional: Delete the actual file from storage to save space
-        // if ($image->src && strpos($image->src, '/storage/') === 0) { ... }
+        try {
+            // Find the image by ID
+            $image = Image::findOrFail($id);
 
+            // Delete the image file from the storage folder
+            $filePath = public_path($image->file_url); // Get the full path to the file
+            if (file_exists($filePath)) {
+                unlink($filePath); // Delete the file
+            }
+
+        // Delete the record from the database
         $image->delete();
 
-        return response()->json(['message' => 'Image deleted successfully!'], 200);
+        return response()->json(['message' => 'Image deleted successfully'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to delete image', 'error' => $e->getMessage()], 500);
+        }
     }
 
-    /**
-     * Helper to detect Base64 strings and save them as files.
-     * (Kept from previous version to ensure uploads work)
-     */
-    private function saveImageFromBase64(array $data)
+    public function update(StoreImageRequest $request, $id)
     {
-        if (isset($data['src']) && preg_match('/^data:image\/(\w+);base64,/', $data['src'], $type)) {
-            $extension = strtolower($type[1]);
-            if ($extension === 'jpeg') { $extension = 'jpg'; }
+         try {
+            // Find the image by ID
+            $image = Image::findOrFail($id);
 
-            $base64Data = substr($data['src'], strpos($data['src'], ',') + 1);
-            $base64Data = base64_decode($base64Data);
+            // Update the title
+            $image->title = $request->title;
 
-            $fileName = 'images/' . Str::random(16) . '.' . $extension;
+            // If a new file is uploaded, delete the old file and save the new one
+            if ($request->hasFile('file')) {
+                // Delete the old file
+                $oldFilePath = public_path($image->file_url);
+                if (file_exists($oldFilePath)) {
+                    unlink($oldFilePath);
+                }
 
-            Storage::disk('public')->put($fileName, $base64Data);
+                // Save the new file
+                $filePath = $request->file('file')->store('images', 'public');
+                $image->file_name = $request->file('file')->getClientOriginalName();
+                $image->file_url = "/storage/{$filePath}";
+            }
 
-            $data['src'] = '/storage/' . $fileName;
+            // Save the updated image details
+            $image->save();
+
+            return response()->json(['message' => 'Image updated successfully', 'image' => $image], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to update image', 'error' => $e->getMessage()], 500);
         }
-
-        return $data;
     }
 }

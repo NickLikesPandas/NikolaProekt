@@ -11,12 +11,12 @@ class Image extends Model
 
     /**
      * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
      */
     protected $fillable = [
-        'title',
-        'src',
+        'title',       // The title of the image
+        'file_name',   // The original file name
+        'file_url',    // The URL of the stored file
+        'user_id',     // The ID of the user who uploaded the image
     ];
 
     /**

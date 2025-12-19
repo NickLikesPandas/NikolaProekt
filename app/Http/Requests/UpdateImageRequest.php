@@ -10,18 +10,16 @@ class UpdateImageRequest extends FormRequest
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
-    {
-        return true;
-    }
+{
+    return true; // <--- CHANGE THIS FROM FALSE TO TRUE
+}
 
-    /**
-     * Get the validation rules that apply to the request.
-     */
-    public function rules(): array
-    {
-        return [
-            'title' => 'sometimes|required|string|max:255',
-            'src' => 'sometimes|required|string',
-        ];
-    }
+public function rules(): array
+{
+    return [
+        
+        'title' => 'sometimes|string|max:255',
+        'src'   => 'sometimes|string',
+    ];
+}
 }
